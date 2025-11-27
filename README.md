@@ -255,3 +255,4 @@ This project implements a comprehensive airline database that:
 •	Is designed with scalability and performance in mind
 The schema, sample data, and reports together simulate a realistic operational environment for a commercial airline like IndiGo, fulfilling typical DBMS course objectives of modelling, normalization, integrity, indexing, and query design.
 
+<img width="1449" height="832" alt="image" src="https://github.com/user-attachments/assets/b75a9c9a-a597-4efe-9ffd-6b538f8dc746" />
