@@ -1,4 +1,4 @@
-# Indigo-Database_FSM_341081_341082_341111
+**OVERVIEW**
 Project Title: Airline Reservation & Operations Database (IndiGo-style Commercial Airline)
 Database: MySQL 8.x
 Schema Name: airline_db
