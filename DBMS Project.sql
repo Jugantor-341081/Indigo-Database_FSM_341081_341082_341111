@@ -1,14 +1,4 @@
--- ============================================================================
--- AIRLINE DATABASE SCHEMA (IndiGo-style Commercial Airline)
--- ============================================================================
--- Production-ready MySQL schema with optimization for scale
--- Author: Database Design Team
--- Date: 2025-11-27
--- ============================================================================
 
--- ============================================================================
--- 1. DEPARTMENTS & EMPLOYEES (CORE OPERATIONS)
--- ============================================================================
 USE airline_db;
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -61,10 +51,6 @@ CREATE TABLE IF NOT EXISTS employees (
         FOREIGN KEY (department_id) REFERENCES departments(department_id)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 2. AIRPORTS (NETWORK NODES)
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS airports (
     airport_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     iata_code CHAR(3) NOT NULL UNIQUE,
@@ -79,10 +65,6 @@ CREATE TABLE IF NOT EXISTS airports (
     INDEX idx_airport_city (city),
     INDEX idx_airport_hub (is_hub)
 ) ENGINE=InnoDB;
-
--- ============================================================================
--- 3. AIRCRAFT TYPES & FLEET
--- ============================================================================
 
 CREATE TABLE IF NOT EXISTS aircraft_types (
     aircraft_type_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -116,10 +98,6 @@ CREATE TABLE IF NOT EXISTS aircraft (
         FOREIGN KEY (aircraft_type_id) REFERENCES aircraft_types(aircraft_type_id)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 4. ROUTES & FLIGHTS
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS routes (
     route_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     origin_airport_id INT UNSIGNED NOT NULL,
@@ -139,7 +117,6 @@ CREATE TABLE IF NOT EXISTS routes (
         CHECK (origin_airport_id <> destination_airport_id)
 ) ENGINE=InnoDB;
 
--- Flight template (flight number definition)
 CREATE TABLE IF NOT EXISTS flights (
     flight_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     flight_number CHAR(6) NOT NULL UNIQUE,
@@ -157,7 +134,6 @@ CREATE TABLE IF NOT EXISTS flights (
         FOREIGN KEY (aircraft_type_id) REFERENCES aircraft_types(aircraft_type_id)
 ) ENGINE=InnoDB;
 
--- Scheduled flight instances (actual occurrences)
 CREATE TABLE IF NOT EXISTS flight_schedules (
     flight_schedule_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     flight_id INT UNSIGNED NOT NULL,
@@ -167,7 +143,7 @@ CREATE TABLE IF NOT EXISTS flight_schedules (
     scheduled_arrival TIMESTAMP NOT NULL,
     actual_departure TIMESTAMP NULL,
     actual_arrival TIMESTAMP NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',  -- SCHEDULED, BOARDING, AIRBORNE, LANDED, CANCELLED, DELAYED
+    status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',
     total_capacity SMALLINT NOT NULL,
     available_seats SMALLINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -183,14 +159,10 @@ CREATE TABLE IF NOT EXISTS flight_schedules (
         FOREIGN KEY (aircraft_id) REFERENCES aircraft(aircraft_id)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 5. FARE CLASSES & PRICING
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS fare_classes (
     fare_class_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     class_code CHAR(1) NOT NULL UNIQUE,
-    class_name VARCHAR(30) NOT NULL,  -- ECONOMY, PREMIUM, BUSINESS, FIRST
+    class_name VARCHAR(30) NOT NULL,
     seat_pitch_inches SMALLINT,
     baggage_allowance_kg SMALLINT NOT NULL,
     meals_included BOOLEAN,
@@ -200,38 +172,33 @@ CREATE TABLE IF NOT EXISTS fare_classes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 6. PASSENGERS & BOOKINGS
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS passengers (
     passenger_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(10),  -- MR, MRS, MS, DR, etc.
+    title VARCHAR(10),
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
     date_of_birth DATE,
-    gender CHAR(1),  -- M, F, O, U
+    gender CHAR(1),
     email VARCHAR(100),
     phone CHAR(12),
     passport_number VARCHAR(20) UNIQUE,
-    nationality CHAR(2),  -- ISO 3166-1 alpha-2
+    nationality CHAR(2),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_passenger_email (email),
     INDEX idx_passenger_passport (passport_number)
 ) ENGINE=InnoDB;
 
--- PNR (Passenger Name Record)
 CREATE TABLE IF NOT EXISTS bookings (
     booking_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     pnr_code CHAR(6) NOT NULL UNIQUE,
     passenger_id INT UNSIGNED NOT NULL,
     booking_date TIMESTAMP NOT NULL,
-    booking_status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED',  -- CONFIRMED, CHECKED_IN, BOARDED, COMPLETED, CANCELLED
+    booking_status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED',
     total_fare DECIMAL(10, 2) NOT NULL,
     currency CHAR(3) DEFAULT 'INR',
-    payment_method VARCHAR(20),  -- CREDIT_CARD, DEBIT_CARD, NET_BANKING, UPI, CASH
-    payment_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING, COMPLETED, FAILED, REFUNDED
+    payment_method VARCHAR(20),
+    payment_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     special_requests TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -244,17 +211,13 @@ CREATE TABLE IF NOT EXISTS bookings (
         FOREIGN KEY (passenger_id) REFERENCES passengers(passenger_id)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 7. TICKETS (BOOKING DETAILS)
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS tickets (
     ticket_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     booking_id INT UNSIGNED NOT NULL,
     flight_schedule_id INT UNSIGNED NOT NULL,
     fare_class_id INT UNSIGNED NOT NULL,
-    seat_number VARCHAR(5),  -- e.g., 12A, 34F
-    ticket_status VARCHAR(20) NOT NULL DEFAULT 'ISSUED',  -- ISSUED, CHECKED_IN, BOARDED, USED, VOIDED
+    seat_number VARCHAR(5),
+    ticket_status VARCHAR(20) NOT NULL DEFAULT 'ISSUED',
     base_fare DECIMAL(10, 2) NOT NULL,
     tax_amount DECIMAL(8, 2) DEFAULT 0,
     discount_amount DECIMAL(8, 2) DEFAULT 0,
@@ -274,17 +237,13 @@ CREATE TABLE IF NOT EXISTS tickets (
         FOREIGN KEY (fare_class_id) REFERENCES fare_classes(fare_class_id)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 8. BAGGAGE
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS baggage (
     baggage_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     ticket_id INT UNSIGNED NOT NULL,
     baggage_tag_number CHAR(13) NOT NULL UNIQUE,
     weight_kg DECIMAL(5, 2) NOT NULL,
-    baggage_type VARCHAR(20),  -- CHECKED, CARRY_ON, PERSONAL
-    status VARCHAR(20) NOT NULL DEFAULT 'REGISTERED',  -- REGISTERED, TAGGED, LOADED, UNLOADED, DELIVERED, LOST
+    baggage_type VARCHAR(20),
+    status VARCHAR(20) NOT NULL DEFAULT 'REGISTERED',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_baggage_ticket (ticket_id),
@@ -294,19 +253,14 @@ CREATE TABLE IF NOT EXISTS baggage (
         FOREIGN KEY (ticket_id) REFERENCES tickets(ticket_id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 9. CREW & CREW ASSIGNMENTS
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS crew_roles (
     crew_role_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     role_code CHAR(3) NOT NULL UNIQUE,
-    role_name VARCHAR(30) NOT NULL,  -- PILOT, COPILOT, FLIGHT_ATTENDANT, etc.
+    role_name VARCHAR(30) NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Crew members (can be different from general employees)
 CREATE TABLE IF NOT EXISTS crew (
     crew_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     employee_id INT UNSIGNED NOT NULL,
@@ -345,21 +299,17 @@ CREATE TABLE IF NOT EXISTS crew_assignments (
         FOREIGN KEY (crew_role_id) REFERENCES crew_roles(crew_role_id)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 10. MAINTENANCE RECORDS
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS maintenance_records (
     maintenance_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     aircraft_id INT UNSIGNED NOT NULL,
-    maintenance_type VARCHAR(30) NOT NULL,  -- SCHEDULED, UNSCHEDULED, INSPECTION, REPAIR
+    maintenance_type VARCHAR(30) NOT NULL,
     start_date TIMESTAMP NOT NULL,
     end_date TIMESTAMP,
     technician_id INT UNSIGNED,
     description TEXT NOT NULL,
     parts_replaced TEXT,
     cost_amount DECIMAL(12, 2),
-    status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',  -- IN_PROGRESS, COMPLETED, FAILED
+    status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_maintenance_aircraft (aircraft_id),
     INDEX idx_maintenance_date (start_date),
@@ -371,15 +321,11 @@ CREATE TABLE IF NOT EXISTS maintenance_records (
         FOREIGN KEY (technician_id) REFERENCES employees(employee_id)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 11. AUDIT LOG
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS audit_log (
     audit_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     table_name VARCHAR(50) NOT NULL,
     record_id INT,
-    operation VARCHAR(10) NOT NULL,  -- INSERT, UPDATE, DELETE
+    operation VARCHAR(10) NOT NULL,
     old_values JSON,
     new_values JSON,
     user_id INT UNSIGNED,
@@ -392,11 +338,6 @@ CREATE TABLE IF NOT EXISTS audit_log (
         FOREIGN KEY (user_id) REFERENCES employees(employee_id)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 12. INDEXES FOR PERFORMANCE (ADDITIONAL) - SAFE CREATION
--- ============================================================================
-
--- idx_tickets_flight_fare
 SET @idx_exists := (
     SELECT COUNT(*)
     FROM information_schema.statistics
@@ -428,7 +369,6 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- idx_flight_schedules_date_status
 SET @idx_exists := (
     SELECT COUNT(*)
     FROM information_schema.statistics
@@ -444,11 +384,6 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- ============================================================================
--- SAMPLE DATA (DML) - AIRLINE DATABASE
--- ============================================================================
-
--- 1. DEPARTMENTS
 INSERT IGNORE INTO departments (department_code, department_name, description) VALUES
 ('OPS', 'Operations', 'Flight operations and scheduling'),
 ('MNT', 'Maintenance', 'Aircraft maintenance and engineering'),
@@ -458,7 +393,6 @@ INSERT IGNORE INTO departments (department_code, department_name, description) V
 ('MKT', 'Marketing', 'Marketing and customer acquisition'),
 ('IT',  'Information Technology', 'IT systems and support');
 
--- 2. EMPLOYEES
 INSERT IGNORE INTO employees
 (employee_code, first_name, last_name, email, phone, department_id, designation, hire_date, is_active) VALUES
 ('EMP001', 'Rajesh', 'Kumar', 'rajesh.kumar@indigo.co.in', '9876543210', 1, 'Operations Manager', '2020-01-15', TRUE),
@@ -469,7 +403,6 @@ INSERT IGNORE INTO employees
 ('EMP006', 'Captain','Neha Gupta','neha.gupta@indigo.co.in','9876543215',3,'Pilot','2018-04-15',TRUE),
 ('EMP007', 'Flight', 'Attendant Zara','zara.khan@indigo.co.in','9876543216',3,'Flight Attendant','2021-07-01',TRUE);
 
--- 3. AIRPORTS
 INSERT IGNORE INTO airports
 (iata_code, icao_code, airport_name, city, country, timezone, elevation_feet, is_hub) VALUES
 ('DEL', 'VIDP', 'Indira Gandhi International Airport', 'Delhi',    'IN', 'Asia/Kolkata', 777,  TRUE),
@@ -479,7 +412,6 @@ INSERT IGNORE INTO airports
 ('CCU', 'VECC', 'Netaji Subhas Chandra Bose International Airport','Kolkata','IN','Asia/Kolkata',21,FALSE),
 ('MAA', 'VOMM', 'Chennai International Airport',       'Chennai',  'IN', 'Asia/Kolkata', 52,   FALSE);
 
--- 4. AIRCRAFT TYPES
 INSERT IGNORE INTO aircraft_types
 (aircraft_code, manufacturer, model, max_capacity, cargo_capacity_kg, cruise_speed_kmh, range_km, fuel_capacity_liters) VALUES
 ('A320','Airbus', 'A320-200', 180, 8000, 840, 5950, 27000),
@@ -488,7 +420,6 @@ INSERT IGNORE INTO aircraft_types
 ('B789','Boeing', '787-9',    296,21000, 913,13650,126372),
 ('E190','Embraer','E190-E2',  146, 4500, 825, 4815, 19200);
 
--- 5. AIRCRAFT (FLEET)
 INSERT IGNORE INTO aircraft
 (registration, aircraft_type_id, manufacture_year, total_flight_hours, total_cycles, is_active, last_maintenance_date, next_maintenance_due) VALUES
 ('VT-IJA', 1, 2018, 25000, 8500, TRUE, '2025-11-20', '2026-02-15'),
@@ -498,21 +429,19 @@ INSERT IGNORE INTO aircraft
 ('VT-IJE', 4, 2021, 15000, 4500, TRUE, '2025-11-01', '2026-05-20'),
 ('VT-IJF', 5, 2022,  8000, 2800, TRUE, '2025-10-30', '2026-06-15');
 
--- 6. ROUTES
 INSERT IGNORE INTO routes
 (origin_airport_id, destination_airport_id, distance_km, estimated_flight_time_minutes) VALUES
-(1, 2,  888, 120),  -- DEL -> BOM
-(2, 3,  855, 115),  -- BOM -> BLR
-(1, 3, 2153, 180),  -- DEL -> BLR
-(1, 4, 1702, 150),  -- DEL -> HYD
-(2, 4,  750, 100),  -- BOM -> HYD
-(1, 5, 1473, 150),  -- DEL -> CCU
-(3, 6,  345,  60),  -- BLR -> MAA
-(1, 6, 2186, 195),  -- DEL -> MAA
-(5, 2, 2063, 180),  -- CCU -> BOM
-(4, 3,  710,  95);  -- HYD -> BLR
+(1, 2,  888, 120),
+(2, 3,  855, 115),
+(1, 3, 2153, 180),
+(1, 4, 1702, 150),
+(2, 4,  750, 100),
+(1, 5, 1473, 150),
+(3, 6,  345,  60),
+(1, 6, 2186, 195),
+(5, 2, 2063, 180),
+(4, 3,  710,  95);
 
--- 7. FLIGHTS (FLIGHT TEMPLATES)
 INSERT IGNORE INTO flights
 (flight_number, route_id, aircraft_type_id, scheduled_departure_time, scheduled_arrival_time, is_active) VALUES
 ('6E101', 1, 1, '06:00:00', '07:40:00', TRUE),
@@ -526,27 +455,25 @@ INSERT IGNORE INTO flights
 ('6E109', 8, 3, '10:00:00', '13:15:00', TRUE),
 ('6E110',10, 1, '12:00:00', '13:35:00', TRUE);
 
--- 8. FLIGHT SCHEDULES (SCHEDULED INSTANCES - NEXT 30 DAYS)
 INSERT IGNORE INTO flight_schedules
 (flight_id, aircraft_id, flight_date, scheduled_departure, scheduled_arrival, status, total_capacity, available_seats) VALUES
--- November 27 flights
+
 (1, 1, '2025-11-27', '2025-11-27 06:00:00', '2025-11-27 07:40:00', 'SCHEDULED', 180, 35),
 (2, 3, '2025-11-27', '2025-11-27 14:30:00', '2025-11-27 16:10:00', 'SCHEDULED', 220, 68),
 (3, 2, '2025-11-27', '2025-11-27 07:00:00', '2025-11-27 08:55:00', 'SCHEDULED', 180, 42),
 (4, 5, '2025-11-27', '2025-11-27 09:00:00', '2025-11-27 12:00:00', 'SCHEDULED', 296, 95),
 (5, 4, '2025-11-27', '2025-11-27 11:00:00', '2025-11-27 13:30:00', 'SCHEDULED', 189, 51),
--- November 28 flights
+
 (1, 2, '2025-11-28', '2025-11-28 06:00:00', '2025-11-28 07:40:00', 'SCHEDULED', 180, 28),
 (2, 1, '2025-11-28', '2025-11-28 14:30:00', '2025-11-28 16:10:00', 'SCHEDULED', 220, 72),
 (3, 3, '2025-11-28', '2025-11-28 07:00:00', '2025-11-28 08:55:00', 'SCHEDULED', 180, 55),
--- November 29 flights
+
 (1, 4, '2025-11-29', '2025-11-29 06:00:00', '2025-11-29 07:40:00', 'SCHEDULED', 189, 38),
 (5, 2, '2025-11-29', '2025-11-29 11:00:00', '2025-11-29 13:30:00', 'SCHEDULED', 180, 44),
 (6, 1, '2025-11-29', '2025-11-29 13:00:00', '2025-11-29 14:40:00', 'SCHEDULED', 180, 62),
 (7, 3, '2025-11-29', '2025-11-29 08:30:00', '2025-11-29 10:20:00', 'SCHEDULED', 220, 88),
 (8, 5, '2025-11-29', '2025-11-29 15:00:00', '2025-11-29 16:00:00', 'SCHEDULED', 296,110);
 
--- 9. FARE CLASSES
 INSERT IGNORE INTO fare_classes
 (class_code, class_name, seat_pitch_inches, baggage_allowance_kg, meals_included,
  priority_boarding, seat_selection_allowed) VALUES
@@ -555,7 +482,6 @@ INSERT IGNORE INTO fare_classes
 ('B', 'Business',        38, 30, TRUE,  TRUE,  TRUE),
 ('F', 'First',           40, 40, TRUE,  TRUE,  TRUE);
 
--- 10. PASSENGERS
 INSERT IGNORE INTO passengers
 (title, first_name, last_name, date_of_birth, gender, email, phone,
  passport_number, nationality, is_active) VALUES
@@ -570,7 +496,6 @@ INSERT IGNORE INTO passengers
 ('Mr', 'Vikram', 'Patel',   '1994-08-14', 'M', 'vikram.patel@email.com','9998765440', 'S1234567','IN', TRUE),
 ('Ms', 'Priya',  'Nair',    '1989-06-25', 'F', 'priya.nair@email.com',  '9998765441', 'T8901234','IN', TRUE);
 
--- 11. BOOKINGS (PNRs)
 INSERT IGNORE INTO bookings
 (pnr_code, passenger_id, booking_date, booking_status, total_fare, currency,
  payment_method, payment_status) VALUES
@@ -585,7 +510,6 @@ INSERT IGNORE INTO bookings
 ('ABC131', 9, '2025-11-27 12:20:00', 'CONFIRMED', 7200.00, 'INR', 'CREDIT_CARD', 'COMPLETED'),
 ('ABC132',10,'2025-11-27 14:55:00', 'CONFIRMED', 8900.00, 'INR', 'UPI',         'COMPLETED');
 
--- 12. TICKETS
 INSERT IGNORE INTO tickets
 (booking_id, flight_schedule_id, fare_class_id, seat_number, ticket_status,
  base_fare, tax_amount, discount_amount, total_amount, baggage_weight_allowed_kg) VALUES
@@ -600,33 +524,29 @@ INSERT IGNORE INTO tickets
 (9, 5, 1, '28C', 'ISSUED', 6500.00,  850.00, 150.00, 7200.00, 15),
 (10,5, 3, '8B',  'ISSUED', 8000.00, 1100.00, 200.00, 8900.00, 30);
 
--- 13. CREW ROLES
 INSERT IGNORE INTO crew_roles (role_code, role_name, description) VALUES
 ('CPT', 'Captain',          'Senior Pilot'),
 ('FO',  'First Officer',    'Co-Pilot'),
 ('FS',  'Flight Supervisor','Flight Attendant Supervisor'),
 ('FA',  'Flight Attendant', 'Cabin Crew Member');
 
--- 14. CREW
 INSERT IGNORE INTO crew
 (employee_id, crew_role_id, license_number, license_expiry_date, total_flight_hours, is_current) VALUES
 (5, 1, 'ATPL-2015-001', '2026-12-31', 12000, TRUE),
 (6, 2, 'CPL-2018-045',  '2027-06-30',  4500, TRUE),
 (7, 4, 'FA-LIC-2021-156','2025-12-15',  800, TRUE);
 
--- 15. CREW ASSIGNMENTS
 INSERT IGNORE INTO crew_assignments
 (flight_schedule_id, crew_id, crew_role_id, is_active) VALUES
-(1, 1, 1, TRUE),   -- Captain on flight 1
-(1, 2, 2, TRUE),   -- First Officer on flight 1
-(1, 3, 4, TRUE),   -- Flight Attendant on flight 1
-(2, 1, 1, TRUE),   -- Captain on flight 2
-(2, 2, 2, TRUE),   -- First Officer on flight 2
-(3, 2, 1, TRUE),   -- Captain on flight 3
-(4, 1, 1, TRUE),   -- Captain on flight 4
-(5, 1, 1, TRUE);   -- Captain on flight 5
+(1, 1, 1, TRUE),
+(1, 2, 2, TRUE),
+(1, 3, 4, TRUE),
+(2, 1, 1, TRUE),
+(2, 2, 2, TRUE),
+(3, 2, 1, TRUE),
+(4, 1, 1, TRUE),
+(5, 1, 1, TRUE);
 
--- 16. MAINTENANCE RECORDS
 INSERT IGNORE INTO maintenance_records
 (aircraft_id, maintenance_type, start_date, end_date, technician_id,
  description, parts_replaced, cost_amount, status) VALUES
@@ -643,7 +563,6 @@ INSERT IGNORE INTO maintenance_records
 (6, 'SCHEDULED','2025-10-30 09:00:00', '2025-11-02 16:00:00', 2,
  'A-Check (200 flight hours)',  'Filters, fluids, belts',  15000.00, 'COMPLETED');
 
--- 17. BAGGAGE
 INSERT IGNORE INTO baggage
 (ticket_id, baggage_tag_number, weight_kg, baggage_type, status) VALUES
 (1,  '6E101-001-BLR', 18.5, 'CHECKED', 'DELIVERED'),
@@ -657,11 +576,6 @@ INSERT IGNORE INTO baggage
 (9,  '6E301-001-MAA', 16.0, 'CHECKED', 'DELIVERED'),
 (10, '6E301-002-MAA', 25.0, 'CHECKED', 'DELIVERED');
 
--- ============================================================================
--- OPERATIONAL REPORTS & QUERIES
--- ============================================================================
-
--- REPORT 1: DAILY FLIGHT MANIFEST (PASSENGERS PER FLIGHT)
 SELECT
     fs.flight_schedule_id,
     f.flight_number,
@@ -697,7 +611,6 @@ GROUP BY
 ORDER BY
     fs.scheduled_departure;
 
--- REPORT 2: LOAD FACTOR PER FLIGHT (CAPACITY UTILIZATION)
 SELECT
     f.flight_number,
     CONCAT(ap_origin.iata_code, ' → ', ap_dest.iata_code) AS route,
@@ -737,7 +650,6 @@ ORDER BY
     fs.flight_date DESC,
     load_factor_pct DESC;
 
--- REPORT 3: UPCOMING MAINTENANCE DUE FOR EACH AIRCRAFT
 SELECT
     ac.aircraft_id,
     ac.registration,
@@ -818,7 +730,3 @@ ORDER BY
     month DESC,
     total_revenue DESC;
 
-/* 
-(Your scaling recommendations, ER diagram, and schema overview comments can
-stay exactly as you had them here.)
-*/
