@@ -1,258 +1,291 @@
-**OVERVIEW**
-Project Title: Airline Reservation & Operations Database (IndiGo-style Commercial Airline)
-Database: MySQL 8.x
-Schema Name: airline_db
-Project Overview
-This project designs and implements a production-ready relational database for a commercial airline similar to IndiGo. The database supports:
-•	Core airline operations (routes, flights, schedules, aircraft, crew)
-•	Passenger bookings (PNR), tickets, and baggage tracking
-•	Maintenance management for aircraft
-•	Operational reporting (load factor, route revenue, upcoming maintenance)
-•	Scalability and performance through indexing and good schema design
-The implementation is done in MySQL with realistic sample data for Indian airports and routes.
-2. Objectives of the Database
-The main objectives of this project are:
-1.	To model the end-to-end data flow of an airline:
-o	From scheduling flights → booking tickets → boarding passengers → handling baggage.
-2.	To enforce data integrity and consistency using:
-o	Primary keys, foreign keys, unique constraints, and checks.
-3.	To support operational analytics, such as:
-o	Daily flight manifests
-o	Load factor per flight
-o	Route-level revenue
-o	Upcoming maintenance schedule
-4.	To design with scalability in mind, keeping in view:
-o	Millions of tickets and bookings per year
-o	Indexing and query optimization strategies.
-3. Technology and Design Choices
-•	DBMS: MySQL 8 (InnoDB engine)
-•	Character of data: Operational + transactional + reporting
-•	Key design choices:
-o	Separate tables for master data (airports, aircraft types, fare classes, crew roles, departments).
-o	Separate transactional tables for bookings, tickets, baggage.
-o	A flight_schedules table to represent individual flight instances (date-wise operations).
-o	Audit logging via audit_log table for traceability.
-4. Schema Overview
-The schema consists of the following major table categories:
-1.	Core Operations / Master Data
-o	departments, employees
-o	airports
-o	aircraft_types, aircraft
-o	routes, flights, flight_schedules
-o	fare_classes
-o	crew_roles, crew, crew_assignments
-o	maintenance_records
-2.	Transactional Data
-o	passengers
-o	bookings (PNR)
-o	tickets
-o	baggage
-3.	Operational / System Tables
-o	audit_log
-4.1 Key Entities and Their Roles
-•	DEPARTMENTS & EMPLOYEES
-o	departments: Stores functional units like Operations, Maintenance, IT, Crew, etc.
-o	employees: All staff with department, designation, hire date, and active status.
-o	Relationship: One department employs many employees (fk_employee_department).
-•	AIRPORTS
-o	airports: Stores IATA/ICAO codes, city, country, timezone, elevation, hub flag.
-o	Acts as both origin and destination for routes.
-•	AIRCRAFT & TYPES
-o	aircraft_types: Defines model (A320, A321, B738, etc.) and capacities.
-o	aircraft: Individual aircraft with registration, flight hours, cycles, and maintenance due dates.
-o	Relationship: One aircraft type has many physical aircraft.
-•	ROUTES, FLIGHTS & SCHEDULES
-o	routes: Links origin and destination airports with distance and time.
-o	flights: Flight templates (e.g., flight number 6E101) for specific routes and aircraft types.
-o	flight_schedules: Actual dated instances of flights with assigned aircraft and capacity.
-•	PASSENGERS, BOOKINGS & TICKETS
-o	passengers: Personal details of customers.
-o	bookings: Passenger Name Record (PNR) storing total fare, payment method, and status.
-o	tickets: Line-items linking a booking to specific flight_schedules, fare class, seat, and pricing.
-•	BAGGAGE
-o	baggage: Tracks checked-in baggage by ticket_id, tag number, weight, type, and status.
-•	CREW & ASSIGNMENTS
-o	crew_roles: Roles like Captain, First Officer, Flight Attendant.
-o	crew: Links an employee to a crew role with license details and flight hours.
-o	crew_assignments: Assigns crew to specific scheduled flights with role and active flag.
-•	MAINTENANCE
-o	maintenance_records: Logs maintenance activities for aircraft: type, dates, technician, cost, and status.
-•	AUDIT_LOG
-o	audit_log: Generic table to record changes (INSERT/UPDATE/DELETE) on any table with old and new values in JSON, user, and timestamp.
-5. Key Constraints and Integrity Rules
-1.	Primary Keys:
-o	Every table has a primary key (AUTO_INCREMENT unsigned int).
-2.	Unique Constraints:
-o	departments.department_code
-o	employees.employee_code, employees.email
-o	airports.iata_code
-o	aircraft.registration
-o	fare_classes.class_code
-o	bookings.pnr_code
-o	passengers.passport_number
-o	baggage.baggage_tag_number
-3.	Foreign Keys:
-o	employees.department_id → departments.department_id
-o	aircraft.aircraft_type_id → aircraft_types.aircraft_type_id
-o	routes.origin_airport_id / destination_airport_id → airports.airport_id
-o	flights.route_id → routes.route_id
-o	flight_schedules.flight_id → flights.flight_id
-o	flight_schedules.aircraft_id → aircraft.aircraft_id
-o	bookings.passenger_id → passengers.passenger_id
-o	tickets.booking_id → bookings.booking_id (with ON DELETE CASCADE)
-o	tickets.flight_schedule_id → flight_schedules.flight_schedule_id
-o	tickets.fare_class_id → fare_classes.fare_class_id
-o	baggage.ticket_id → tickets.ticket_id (with ON DELETE CASCADE)
-o	crew.employee_id → employees.employee_id
-o	crew.crew_role_id → crew_roles.crew_role_id
-o	crew_assignments.flight_schedule_id → flight_schedules.flight_schedule_id
-o	crew_assignments.crew_id → crew.crew_id
-o	maintenance_records.aircraft_id → aircraft.aircraft_id
-o	maintenance_records.technician_id → employees.employee_id
-o	audit_log.user_id → employees.employee_id
-4.	Check Constraint:
-o	routes ensures origin_airport_id <> destination_airport_id (no self-route).
-5.	Cascading Behavior:
-o	Deleting a booking automatically deletes its tickets and dependent baggage due to ON DELETE CASCADE on tickets and baggage.
-6. Indexing and Performance Design
-To support high-volume operations and reporting, multiple indexes are defined:
-6.1 Indexes on Master and Transactional Tables
-•	Employees
-o	idx_employee_department (department_id)
-o	idx_employee_active (is_active)
+Jugantor Boruah 3441081
+Archit Chauhan 341082
+Uddipan Bora 341111
+
+
+DBMS Report
+1. Introduction
+Airlines operate some of the most complex transactional systems in the world. From managing thousands of flights daily to ensuring timely passenger check-ins, baggage handling, crew assignments, and maintenance tracking—every component must work together seamlessly.
+This project builds a fully functional relational database that models the central operational and commercial activities of a modern airline such as IndiGo.
+The system is implemented using MySQL 8 / InnoDB , leveraging relational modelling, constraints, and indexing to ensure high data integrity, accuracy, and scalability. The goal is to create a realistic operational environment that demonstrates both technical and analytical capabilities in database design.
+
+2. Objectives of the Project
+2.1 Functional Objectives
+The database aims to capture all core elements of airline operations:
+•	Create and manage airports, routes, aircraft types, and flight templates.
+•	Schedule flights daily with assigned aircraft and capacities.
+•	Register passengers and maintain personal travel profiles.
+•	Record bookings (PNR) and generate multiple tickets under each booking.
+•	Manage baggage check-in, tagging, and tracking.
+•	Assign pilots, cabin crew, and ground staff to each scheduled flight.
+•	Log preventive and corrective maintenance for each aircraft.
+2.2 Data Integrity Objectives
+To maintain accuracy across millions of records, the database enforces:
+•	Primary keys for uniqueness
+•	Foreign keys for referential integrity
+•	Unique constraints for business rules (e.g., Flight number, Airport code, PNR code)
+•	Check constraints to avoid invalid data (e.g., origin ≠ destination)
+•	Cascading rules for dependent deletions
+
+2.3 Analytical Objectives
+The airline industry depends heavily on operational analytics. This database supports:
+•	Load factor calculation
+•	Passenger manifests
+•	Fare mix analysis
+•	Revenue tracking by route
+•	Fleet maintenance planning
+These reports help simulate how real airline operations depend on timely data insights.
+2.4 Scalability Objectives
+Airlines handle huge volumes of data, especially in bookings and tickets. To accommodate this:
+•	Indexes target high-frequency query fields (dates, statuses, foreign keys).
+•	Conditional creation of indexes ensures scripts can run multiple times.
+•	Table structures support future partitioning for massive datasets.
+
+3. Technology Stack
+Component	Choice	Explanation
+DBMS	MySQL 8 (InnoDB)	ACID compliance, foreign keys, row-level locking
+Schema Name	airline_db	Logical separation of project
+Design Approach	Normalized Relational Model	Ensures consistency, reduces redundancy
+Tools Used	MySQL Workbench ERD, SQL Scripts	For modelling, implementation, and testing
+
+4. Conceptual System Design
+The airline system is divided into three major domains:
+4.1 Operational Domain
+Deals with physical assets and core flight structures:
 •	Airports
-o	idx_airport_city (city)
-o	idx_airport_hub (is_hub)
-•	Aircraft
-o	idx_aircraft_type (aircraft_type_id)
-o	idx_aircraft_active (is_active)
-o	idx_aircraft_maintenance (next_maintenance_due)
 •	Routes
-o	idx_route_origin (origin_airport_id)
-o	idx_route_destination (destination_airport_id)
-•	Flight Schedules
-o	idx_flight_schedule_date (flight_date)
-o	idx_flight_schedule_aircraft (aircraft_id)
-o	idx_flight_schedule_status (status)
-o	idx_flight_schedule_departure (scheduled_departure)
+•	Aircraft & aircraft types
+•	Flights
+•	Flight schedules
+•	Crew & roles
+4.2 Commercial Domain
+Captures the customer-facing processes:
 •	Passengers
-o	idx_passenger_email (email)
-o	idx_passenger_passport (passport_number)
-•	Bookings
-o	idx_booking_pnr (pnr_code)
-o	idx_booking_passenger (passenger_id)
-o	idx_booking_status (booking_status)
-o	idx_booking_date (booking_date)
+•	Bookings (PNR)
 •	Tickets
-o	idx_ticket_booking (booking_id)
-o	idx_ticket_flight_schedule (flight_schedule_id)
-o	idx_ticket_status (ticket_status)
-o	idx_ticket_seat (flight_schedule_id, seat_number)
-6.2 Additional “Safe” Indexes
-Indexes are created conditionally using information_schema.statistics and dynamic SQL to prevent duplicate index errors:
-•	idx_tickets_flight_fare on (flight_schedule_id, fare_class_id)
-•	idx_bookings_date_status on (booking_date, booking_status)
-•	idx_flight_schedules_date_status on (flight_date, status)
-This design ensures the script can be executed multiple times without index-duplicate errors.
-7. Sample Data and Scenario
-Realistic sample data is inserted for:
-•	Departments & Employees: 7 departments and 7 employees including pilots and cabin crew.
-•	Airports: Major Indian airports (DEL, BOM, BLR, HYD, CCU, MAA).
-•	Aircraft Types & Fleet: Airbus A320/A321, Boeing 737/787, Embraer E190 with capacities and performance data.
-•	Routes & Flights:
-o	10 routes like DEL–BOM, BOM–BLR, DEL–HYD etc.
-o	10 flight templates (e.g., 6E101, 6E201).
-•	Flight Schedules: Instances from 27–29 November 2025 with assigned aircraft and capacities.
-•	Fare Classes: Economy, Premium Economy, Business, First.
-•	Passengers & Bookings: 10 passengers and corresponding PNRs (ABC123–ABC132).
-•	Tickets & Baggage: Sample tickets and baggage records for the above flights.
-•	Crew & Maintenance: Crew roles, crew members, crew assignments, and maintenance records on aircraft.
-INSERT IGNORE is used for sample data to make the script idempotent (can run multiple times without duplicate key errors).
-8. Operational Reports and Queries
-Four major reports are implemented as SQL queries at the end of the script.
-8.1 Report 1 – Daily Flight Manifest (Passengers per Flight)
-Purpose:
-To get the list of flights for the current day with:
-•	Flight number and route
-•	Departure time
-•	Total passengers booked (non-voided tickets)
-•	Available seats
-•	Load factor (%)
-•	Fare classes booked (Economy, Business, etc.)
-Key points:
-•	Filters on fs.flight_date = CURRENT_DATE and excludes cancelled/voided flights.
-•	Uses GROUP_CONCAT(DISTINCT fc.class_name) to show fare classes for each flight.
-•	Helps operations team monitor today’s load and product mix.
-8.2 Report 2 – Load Factor per Flight (Capacity Utilization)
-Purpose:
-To analyse historical load factor and revenue per scheduled flight for the last 7 days.
-Outputs:
-•	Flight number and route
+•	Fare classes
+•	Baggage
+4.3 Support Domain
+Ensures backend operations run smoothly:
+•	Departments & employees
+•	Maintenance records
+•	Audit logs
+This modular separation ensures clarity in workflow and scalability in real-world airline systems.
+
+5. Detailed Schema Overview
+5.1 Master Data Tables
+These tables rarely change and define the operational structure.
+Airports
+Stores IATA/ICAO code, city, country, timezone, elevation, and hub status.
+Aircraft Types
+Defines characteristics such as:
+•	Model name (A320, A321, B789)
+•	Range
+•	Seating capacity
+•	Fuel burn details
+Aircraft
+Each aircraft receives a unique registration number and stores:
+•	Total flight hours
+•	Cycles
+•	Next maintenance due date
+Departments & Employees
+Used for:
+•	Crew assignment
+•	Maintenance technicians
+•	Ground operations
+Crew Roles & Crew
+Defines job roles like Captain, First Officer, Flight Engineer, Cabin Crew, and links employees to their operational certifications.
+
+5.2 Operational Workflow Tables
+Routes
+Represents pairs of airports (origin → destination), with:
+•	Flight distance
+•	Estimated flight duration
+A check constraint ensures origin and destination are not the same.
+Flights
+Each route may have multiple flight numbers (e.g., 6E101, 6E102).
+These are templates used for:
+•	Pricing
+•	Scheduling
+•	Aircraft assignment
+Flight Schedules
+This is the heart of airline operations, representing each individual dated flight.
+Includes:
+•	Flight number
 •	Flight date
-•	Aircraft registration and model
-•	Total capacity vs. passengers booked
+•	Planned and actual departure/arrival
+•	Status: Scheduled, Delayed, Departed, Cancelled
+•	Available seats
+This table can grow into millions of rows as an airline expands.
+
+5.3 Passenger & Booking System
+Passengers
+Stores permanent identity and personal information including passport details.
+Bookings (PNR)
+Each booking has:
+•	Unique PNR code
+•	Total fare
+•	Payment method
+•	Special service requests
+A booking may contain:
+•	One or multiple passengers
+•	One or multiple flights
+Tickets
+Each ticket:
+•	Ties a passenger & booking to a single flight
+•	Stores fare class, seat number, pricing, discount
+•	Tracks status: Issued, Checked-in, Boarded, Cancelled
+Baggage
+Tracks:
+•	Baggage tag number
+•	Weight
+•	Status: Checked-in, Loaded, Unloaded, Delivered
+This table supports lost and delayed baggage queries.
+
+5.4 Crew Assignments
+Each scheduled flight requires:
+•	Minimum 2 pilots
+•	Cabin crew
+•	Engineers (sometimes)
+This table logs:
+•	Crew member
+•	Assigned flight
+•	Role on that flight
+
+5.5 Maintenance Records
+Stores maintenance tasks with:
+•	Type: Routine Check / A-Check / Engine Inspection
+•	Technician name
+•	Cost
+•	Parts replaced
+•	Status
+Helps avoid aircraft operating with overdue maintenance.
+
+5.6 Audit Log System
+Captures:
+•	Table name
+•	Operation (INSERT/UPDATE/DELETE)
+•	Old values (JSON)
+•	New values (JSON)
+•	Timestamp
+•	Employee performing the change
+Useful for compliance, troubleshooting, and tracking data changes.
+
+6. Constraints, Integrity Rules & Relationships
+6.1 Primary Keys
+Every table uses an integer auto-increment primary key.
+6.2 Unique Fields
+Ensures data correctness, such as:
+•	Flight number
+•	Aircraft registration
+•	Airport code
+•	Passport number
+•	Baggage tag number
+6.3 Foreign Keys
+Strictly enforce relational links between tables.
+6.4 Cascading Deletes
+Booking → Tickets → Baggage
+If a booking is deleted, all related records are removed automatically.
+6.5 Check Constraints
+Prevents creation of invalid route data and ensures status values remain consistent.
+
+7. Indexing and Performance Optimization
+Airlines generate huge volumes of data. To ensure fast response times, indexes are applied on:
+7.1 Date-Based Fields
+•	flight_schedules.flight_date
+•	bookings.booking_date
+7.2 Frequent Lookup Fields
+•	PNR
+•	Ticket status
+•	Passport number
+•	Crew role
+•	Aircraft registration
+7.3 Composite Indexes
+Examples:
+•	(flight_schedule_id, seat_number)
+•	(flight_date, status)
+These significantly reduce query time for operational reports.
+7.4 Conditional Indexing
+Indexed only if missing—ideal for repeated development cycles.
+
+8. Sample Data Generation
+To ensure realistic simulation:
+•	10 airports were inserted.
+•	Multiple aircraft across Airbus, Boeing, and Embraer fleets were created.
+•	Flight templates, routes, and scheduled flights for multiple dates were prepared.
+•	10 passengers with different nationalities were added.
+•	PNRs and tickets were issued for multiple flights.
+•	Crew members like Captain, First Officer, and Cabin Crew were assigned to flights.
+•	Maintenance logs were created for upcoming A-checks.
+INSERT IGNORE ensures the sample data script can run repeatedly without duplication errors.
+
+9. Operational and Analytical Reports
+9.1 Daily Flight Manifest
+Shows:
+•	Flight number
+•	Route
+•	Departure time
+•	Passenger list
+•	Fare class mix
+•	Load factor
+Used by airport ground staff.
+
+9.2 Load Factor and Revenue Tracking
+Helps:
+•	Revenue management team
+•	Network planning team
+Outputs include:
+•	Seats booked vs. total capacity
 •	Load factor (%)
-•	Total revenue and average fare per passenger
-Business use:
-•	Revenue management and network planning teams can:
-o	Identify flights with low load factor for possible promotions or capacity reduction.
-o	Identify high load flights for possible frequency/aircraft up-gauging.
-8.3 Report 3 – Upcoming Maintenance Due per Aircraft
-Purpose:
-To support predictive maintenance and ensure aircraft availability.
-Outputs:
-•	Aircraft registration and model
-•	Total flight hours and manufacture year
-•	Last maintenance date and next due date
-•	Status: OVERDUE, DUE WITHIN WEEK, DUE WITHIN MONTH, or SCHEDULED
-•	Days remaining until maintenance (DATEDIFF)
-•	Number of flights scheduled in next 7 days
-Business use:
-•	The maintenance team can:
-o	Quickly see which aircraft are approaching checks.
-o	Plan maintenance slots without disrupting schedules.
-o	Avoid operating aircraft beyond maintenance limits.
-8.4 Report 4 – Revenue per Route per Month
-Purpose:
-To analyse route-level performance in terms of:
-•	Flights operated
-•	Tickets sold
-•	Seat capacity
+•	Total revenue per flight
+•	Average fare
+
+9.3 Aircraft Maintenance Due Report
+Supports maintenance planners by showing:
+•	Aircraft registration
+•	Manufacture year
+•	Hours flown
+•	Days remaining until next maintenance
+•	Overdue warnings
+
+9.4 Monthly Revenue per Route
+Provides:
+•	Number of flights on each route
+•	Total passengers
+•	Total revenue
 •	Average load factor
-•	Revenue (base fare, tax, discounts)
-•	Average fare per ticket
-Key technical points:
-•	Groups by YEAR(fs.flight_date), MONTH(fs.flight_date) and route.
-•	Uses DATE_FORMAT(fs.flight_date, '%Y-%m') AS year_month for reporting.
-•	Compatible with ONLY_FULL_GROUP_BY by including this expression in GROUP BY.
-Business use:
-•	Management can:
-o	Identify profitable routes and underperforming routes.
-o	Support seasonal analysis and network planning.
-o	Decide where to add or cut capacity.
+Helps identify:
+•	High-performing sectors
+•	Routes needing capacity reduction
+•	Seasonal fluctuations
 
-9. Scalability and Future Enhancements
-Although the current implementation does not physically partition tables (MySQL partitioning is discussed conceptually), the design already considers:
-1.	High row volumes:
-o	bookings, tickets, flight_schedules are expected to grow into millions of records.
-2.	Indexing strategy:
-o	Indexes are placed on frequently filtered and joined columns, especially dates and foreign keys.
-3.	Idempotent sample-data loading:
-o	Using INSERT IGNORE allows safe re-execution of scripts during development and testing.
-4.	Audit logging:
-o	audit_log can be extended with triggers on key tables for full traceability.
-5.	Possible future improvements:
-o	Partition flight_schedules, tickets, and bookings by date (monthly/quarterly).
-o	Add materialized views (or summary tables) for daily and monthly performance.
-o	Integrate with an application front-end for real-time booking engine and dashboards.
+10. Scalability, Reliability & Future Enhancements
+10.1 Partitioning
+Tables like flight_schedules, tickets, and bookings can be partitioned by month or year.
+10.2 Views & Materialized Views
+Precomputed summaries can speed up dashboards.
+10.3 Trigger-Based Auditing
+Automating audit_log entries per insert/update/delete.
+10.4 Integration with Front-End
+The database can be used as the backend for:
+•	Airline booking systems
+•	Mobile apps
+•	Airport operational dashboards
+10.5 AI & Predictive Analysis
+Future additions may include:
+•	Predictive maintenance
+•	Fare forecasting
+•	Crew fatigue analysis
+•	Passenger behaviour modelling
 
-10. Conclusion
-This project implements a comprehensive airline database that:
-•	Covers core airline operations (aircraft, routes, flights, crew)
-•	Manages customer-facing processes (passengers, bookings, tickets, baggage)
-•	Provides useful operational and financial reports
-•	Enforces strong data integrity via keys and constraints
-•	Is designed with scalability and performance in mind
-The schema, sample data, and reports together simulate a realistic operational environment for a commercial airline like IndiGo, fulfilling typical DBMS course objectives of modelling, normalization, integrity, indexing, and query design.
+11. Conclusion
+This project successfully demonstrates how to design a robust, scalable, and realistic airline operations database. The system closely resembles real-world architectures used by commercial airlines, while also providing room for analytical reporting and operational automation.
+The project effectively combines:
+•	Strong relational modelling
+•	Integrity constraints
+•	Scalable indexing
+•	Realistic datasets
+•	Practical SQL reporting queries
+It serves as a comprehensive DBMS coursework project and lays the foundation for more advanced features such as web integration, predictive analytics, and real-time dashboards.
 
-<img width="1449" height="832" alt="image" src="https://github.com/user-attachments/assets/b75a9c9a-a597-4efe-9ffd-6b538f8dc746" />
+![WhatsApp Image 2025-12-03 at 23 05 45_56f74e37](https://github.com/user-attachments/assets/72c12b5d-357d-4759-92be-9405e61cb649)
